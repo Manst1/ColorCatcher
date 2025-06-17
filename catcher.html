@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Catcher</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f0f0; }
+    canvas { border: 2px solid #333; }
+  </style>
+</head>
+<body>
+<script>
+let paddle;
+let blocks = [];
+let score = 0;
+let gameSpeed = 2;
+let gameOver = false;
+
+function setup() {
+  createCanvas(400, 600);
+  paddle = new Paddle();
+  blocks.push(new Block());
+}
+
+function draw() {
+  background(220);
+  
+  if (!gameOver) {
+    // Update and show paddle
+    paddle.move();
+    paddle.show();
+    
+    // Update and show blocks
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      blocks[i].update();
+      blocks[i].show();
+      
+      // Check collision
+      if (blocks[i].hits(paddle)) {
+        if (blocks[i].color.toString() === paddle.color.toString()) {
+          score += 10;
+          blocks.splice(i, 1);
+        } else {
+          gameOver = true;
+        }
+      } else if (blocks[i].y > height) {
+        score -= 50; // Deduct 50 points for missing a block
+        blocks.splice(i, 1);
+        if (score < 0) {
+          gameOver = true; // End game if score goes below 0
+        }
+      }
+    }
+    
+    // Spawn new blocks
+    if (frameCount % 60 === 0) {
+      blocks.push(new Block());
+      gameSpeed += 0.1; // Increase difficulty
+    }
+    
+    // Display score
+    textSize(20);
+    fill(0);
+    text(`Score: ${score}`, 10, 30);
+  } else {
+    // Game over screen
+    textSize(32);
+    fill(255, 0, 0);
+    textAlign(CENTER);
+    text('Game Over!', width / 2, height / 2);
+    text(`Score: ${score}`, width / 2, height / 2 + 40);
+    textSize(20);
+    text('Press T to Restart', width / 2, height / 2 + 80);
+  }
+}
+
+function keyPressed() {
+  if (key === 'w' || key === 'W') {
+    paddle.setColor(color(0, 0, 255)); // Blue
+  } else if (key === 'e' || key === 'E') {
+    paddle.setColor(color(255, 0, 0)); // Red
+  } else if (key === 'r' || key === 'R') {
+    paddle.setColor(color(255, 255, 0)); // Yellow
+  } else if (key === 't' || key === 'T' && gameOver) {
+    // Restart game
+    score = 0;
+    gameSpeed = 2;
+    blocks = [];
+    blocks.push(new Block());
+    gameOver = false;
+  }
+}
+
+class Paddle {
+  constructor() {
+    this.w = 80;
+    this.h = 20;
+    this.x = width / 2 - this.w / 2;
+    this.y = height - 40;
+    this.color = color(255, 0, 0); // Default red
+    this.speed = 5;
+  }
+  
+  move() {
+    if (keyIsDown(LEFT_ARROW)) {
+      this.x -= this.speed;
+    }
+    if (keyIsDown(RIGHT_ARROW)) {
+      this.x += this.speed;
+    }
+    this.x = constrain(this.x, 0, width - this.w);
+  }
+  
+  show() {
+    fill(this.color);
+    rect(this.x, this.y, this.w, this.h);
+  }
+  
+  setColor(c) {
+    this.color = c;
+  }
+}
+
+class Block {
+  constructor() {
+    this.w = 40;
+    this.h = 40;
+    this.x = random(0, width - this.w);
+    this.y = -this.h;
+    this.color = random([color(255, 0, 0), color(0, 0, 255), color(255, 255, 0)]); // Red, Blue, or Yellow
+  }
+  
+  update() {
+    this.y += gameSpeed;
+  }
+  
+  show() {
+    fill(this.color);
+    rect(this.x, this.y, this.w, this.h);
+  }
+  
+  hits(paddle) {
+    return (this.y + this.h >= paddle.y && 
+            this.x + this.w >= paddle.x && 
+            this.x <= paddle.x + paddle.w && 
+            this.y <= paddle.y + paddle.h);
+  }
+}
+</script>
+</body>
+</html>
