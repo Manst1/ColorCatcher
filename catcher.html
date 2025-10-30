@@ -1,151 +1,206 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Catcher</title>
+  <meta charset="UTF-8">
+  <title>ColorCatcher</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/v6p7Iz7.png">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <style>
-    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f0f0; }
-    canvas { border: 2px solid #333; }
+    /* ---------- LIGHT MODE (same as Trax) ---------- */
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background:#f0f0f0;
+      font-family:Arial,sans-serif;
+      transition:background 0.3s;
+    }
+    canvas{
+      background:#fff;
+      border:1px solid #000;
+      border-radius:10px;
+      box-shadow:0 4px 8px rgba(0,0,0,0.1);
+      transition:background 0.3s,border-color 0.3s;
+    }
+    #darkModeButton{
+      position:absolute;
+      bottom:20px;
+      right:20px;
+      padding:10px 20px;
+      width:120px;
+      font-size:16px;
+      cursor:pointer;
+      border:none;
+      border-radius:5px;
+      background:#555;
+      color:#fff;
+      transition:background 0.3s;
+    }
+    #darkModeButton:hover{background:#666;}
+    #stats{
+      position:absolute;
+      bottom:20px;
+      left:20px;
+      font-size:16px;
+      font-weight:bold;
+      color:#000;
+      transition:color 0.3s;
+    }
+    .instructions{
+      position:absolute;
+      top:20px;
+      left:50%;
+      transform:translateX(-50%);
+      text-align:center;
+      font-size:14px;
+      opacity:0.8;
+    }
+
+    /* ---------- DARK MODE (exactly Trax) ---------- */
+    body.dark-mode{
+      background:#333;
+    }
+    body.dark-mode canvas{
+      background:#444;
+      border-color:#fff;
+    }
+    body.dark-mode #stats{color:#fff;}
   </style>
 </head>
 <body>
-<script>
-let paddle;
-let blocks = [];
-let score = 0;
-let gameSpeed = 2;
-let gameOver = false;
 
-function setup() {
-  createCanvas(400, 600);
-  paddle = new Paddle();
-  blocks.push(new Block());
-}
+  <div class="instructions">
+    ← → Move | W=Blue, E=Red, R=Yellow | Match colors to score!<br>
+    <em>Press T to restart after Game Over</em>
+  </div>
 
-function draw() {
-  background(220);
-  
-  if (!gameOver) {
-    // Update and show paddle
-    paddle.move();
-    paddle.show();
-    
-    // Update and show blocks
-    for (let i = blocks.length - 1; i >= 0; i--) {
-      blocks[i].update();
-      blocks[i].show();
-      
-      // Check collision
-      if (blocks[i].hits(paddle)) {
-        if (blocks[i].color.toString() === paddle.color.toString()) {
-          score += 10;
-          blocks.splice(i, 1);
-        } else {
-          gameOver = true;
+  <div id="stats">Score: 0</div>
+  <button id="darkModeButton" onclick="toggleDarkMode()">Dark Mode</button>
+
+  <script>
+    /* ---------- DARK-MODE TOGGLE ---------- */
+    const darkBtn = document.getElementById('darkModeButton');
+    const body = document.body;
+    const saved = localStorage.getItem('catcher-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (saved === 'dark' || (!saved && prefersDark)) {
+      body.classList.add('dark-mode');
+      darkBtn.textContent = 'Light Mode';
+    }
+
+    window.toggleDarkMode = function () {
+      body.classList.toggle('dark-mode');
+      const isDark = body.classList.contains('dark-mode');
+      darkBtn.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      localStorage.setItem('catcher-theme', isDark ? 'dark' : 'light');
+    };
+
+    /* ---------- P5 GAME ---------- */
+    let paddle, blocks = [], score = 0, gameSpeed = 2, gameOver = false;
+
+    function setup() {
+      // **Exact same size & position as Trax**
+      const canvas = createCanvas(360, 600);
+      canvas.parent(document.body);   // centred by flex on <body>
+      paddle = new Paddle();
+      blocks.push(new Block());
+    }
+
+    function draw() {
+      const isDark = body.classList.contains('dark-mode');
+      background(isDark ? 50 : 255);   // p5 background (doesn’t affect CSS canvas bg)
+
+      if (!gameOver) {
+        paddle.move();
+        paddle.show();
+
+        for (let i = blocks.length - 1; i >= 0; i--) {
+          blocks[i].update();
+          blocks[i].show();
+
+          if (blocks[i].hits(paddle)) {
+            if (blocks[i].color.toString() === paddle.color.toString()) {
+              score += 10;
+              blocks.splice(i, 1);
+            } else {
+              gameOver = true;
+            }
+          } else if (blocks[i].y > height) {
+            score -= 50;
+            blocks.splice(i, 1);
+            if (score < 0) gameOver = true;
+          }
         }
-      } else if (blocks[i].y > height) {
-        score -= 50; // Deduct 50 points for missing a block
-        blocks.splice(i, 1);
-        if (score < 0) {
-          gameOver = true; // End game if score goes below 0
+
+        if (frameCount % 60 === 0) {
+          blocks.push(new Block());
+          gameSpeed += 0.1;
         }
+
+        document.getElementById('stats').textContent = `Score: ${score}`;
+      } else {
+        textSize(36);
+        fill(255, 0, 0);
+        textAlign(CENTER, CENTER);
+        text('Game Over!', width / 2, height / 2 - 20);
+        textSize(24);
+        fill(isDark ? 220 : 50);
+        text(`Final Score: ${score}`, width / 2, height / 2 + 20);
+        textSize(18);
+        text('Press T to Restart', width / 2, height / 2 + 60);
       }
     }
-    
-    // Spawn new blocks
-    if (frameCount % 60 === 0) {
-      blocks.push(new Block());
-      gameSpeed += 0.1; // Increase difficulty
-    }
-    
-    // Display score
-    textSize(20);
-    fill(0);
-    text(`Score: ${score}`, 10, 30);
-  } else {
-    // Game over screen
-    textSize(32);
-    fill(255, 0, 0);
-    textAlign(CENTER);
-    text('Game Over!', width / 2, height / 2);
-    text(`Score: ${score}`, width / 2, height / 2 + 40);
-    textSize(20);
-    text('Press T to Restart', width / 2, height / 2 + 80);
-  }
-}
 
-function keyPressed() {
-  if (key === 'w' || key === 'W') {
-    paddle.setColor(color(0, 0, 255)); // Blue
-  } else if (key === 'e' || key === 'E') {
-    paddle.setColor(color(255, 0, 0)); // Red
-  } else if (key === 'r' || key === 'R') {
-    paddle.setColor(color(255, 255, 0)); // Yellow
-  } else if (key === 't' || key === 'T' && gameOver) {
-    // Restart game
-    score = 0;
-    gameSpeed = 2;
-    blocks = [];
-    blocks.push(new Block());
-    gameOver = false;
-  }
-}
-
-class Paddle {
-  constructor() {
-    this.w = 80;
-    this.h = 20;
-    this.x = width / 2 - this.w / 2;
-    this.y = height - 40;
-    this.color = color(255, 0, 0); // Default red
-    this.speed = 5;
-  }
-  
-  move() {
-    if (keyIsDown(LEFT_ARROW)) {
-      this.x -= this.speed;
+    function keyPressed() {
+      if (key === 'w' || key === 'W') paddle.setColor(color(0, 0, 255));
+      else if (key === 'e' || key === 'E') paddle.setColor(color(255, 0, 0));
+      else if (key === 'r' || key === 'R') paddle.setColor(color(255, 255, 0));
+      else if ((key === 't' || key === 'T') && gameOver) {
+        score = 0;
+        gameSpeed = 2;
+        blocks = [];
+        blocks.push(new Block());
+        gameOver = false;
+      }
     }
-    if (keyIsDown(RIGHT_ARROW)) {
-      this.x += this.speed;
-    }
-    this.x = constrain(this.x, 0, width - this.w);
-  }
-  
-  show() {
-    fill(this.color);
-    rect(this.x, this.y, this.w, this.h);
-  }
-  
-  setColor(c) {
-    this.color = c;
-  }
-}
 
-class Block {
-  constructor() {
-    this.w = 40;
-    this.h = 40;
-    this.x = random(0, width - this.w);
-    this.y = -this.h;
-    this.color = random([color(255, 0, 0), color(0, 0, 255), color(255, 255, 0)]); // Red, Blue, or Yellow
-  }
-  
-  update() {
-    this.y += gameSpeed;
-  }
-  
-  show() {
-    fill(this.color);
-    rect(this.x, this.y, this.w, this.h);
-  }
-  
-  hits(paddle) {
-    return (this.y + this.h >= paddle.y && 
-            this.x + this.w >= paddle.x && 
-            this.x <= paddle.x + paddle.w && 
-            this.y <= paddle.y + paddle.h);
-  }
-}
-</script>
+    class Paddle {
+      constructor() {
+        this.w = 80; this.h = 20;
+        this.x = width / 2 - this.w / 2;
+        this.y = height - 40;
+        this.color = color(255, 0, 0);
+        this.speed = 6;
+      }
+      move() {
+        if (keyIsDown(LEFT_ARROW)) this.x -= this.speed;
+        if (keyIsDown(RIGHT_ARROW)) this.x += this.speed;
+        this.x = constrain(this.x, 0, width - this.w);
+      }
+      show() { fill(this.color); rect(this.x, this.y, this.w, this.h); }
+      setColor(c) { this.color = c; }
+    }
+
+    class Block {
+      constructor() {
+        this.w = 40; this.h = 40;
+        this.x = random(0, width - this.w);
+        this.y = -this.h;
+        this.color = random([color(255,0,0), color(0,0,255), color(255,255,0)]);
+      }
+      update() { this.y += gameSpeed; }
+      show() { fill(this.color); rect(this.x, this.y, this.w, this.h); }
+      hits(p) {
+        return (this.y + this.h >= p.y &&
+                this.x + this.w >= p.x &&
+                this.x <= p.x + p.w &&
+                this.y <= p.y + p.h);
+      }
+    }
+  </script>
 </body>
 </html>
